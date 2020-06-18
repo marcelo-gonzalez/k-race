@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2020 Marcelo Diop-Gonzalez
+
 #include <errno.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_roots.h>

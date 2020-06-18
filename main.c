@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2020 Marcelo Diop-Gonzalez
+
 #define _GNU_SOURCE
 
 #include <getopt.h>
