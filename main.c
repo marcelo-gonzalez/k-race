@@ -454,7 +454,7 @@ static int experiment_loop(struct worker_context *ctx,
 
 	print_data_header(sampler->num_params, config->name);
 
-	for (int i = 0; i < 2000; i++) {
+	while (1) {
 		unsigned int samples = 0;
 		int counts = 0, triggers = 0;
 		long *params = sampler->next_params(sampler);
@@ -499,7 +499,7 @@ out:
 static int notrace_loop(struct worker_context *ctx, struct sampler *sampler) {
 	ctx->samples = 1000;
 
-	for (int i = 0; i < 200; i++) {
+	while (1) {
 		set_offsets(ctx, sampler->next_params(sampler));
 		int err = run_workers(ctx);
 		if (err)
