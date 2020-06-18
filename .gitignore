@@ -1,0 +1,4 @@
+*.o
+discover
+test
+stats-test

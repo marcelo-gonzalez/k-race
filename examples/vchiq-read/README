@@ -1,0 +1,6 @@
+There's a race in vchiq_dump_platform_instances in the file
+drivers/staging/vc04_services/interface/vchiq_arm/vchiq_arm.c
+where the ->mark field in struct vchiq_service is used to keep
+track of what has been printed so far, but there's no locking.
+So this reproducer shows that you can get readers of /dev/vchiq
+to see fewer results than they should
