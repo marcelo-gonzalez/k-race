@@ -1,8 +1,6 @@
 #ifndef STATS_H
 #define STATS_H
 
-#include <glib.h>
-
 struct sampler {
 	int num_params;
 	long *(*next_params)(struct sampler *s);

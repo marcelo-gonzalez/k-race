@@ -2,6 +2,7 @@
 // Copyright (C) 2020 Marcelo Diop-Gonzalez
 
 #include <errno.h>
+#include <glib.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_roots.h>
 #include <stdlib.h>
