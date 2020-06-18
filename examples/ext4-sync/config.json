@@ -1,8 +1,5 @@
 {
-    // ->d_parent read
     "opened_by": "ext4_sync_file+0x293",
-    // d_move() call
     "triggered_by": "vfs_rename+0x382",
-    // ->d_parent->d_inode read
     "closed_by": "ext4_sync_file+0x2a5",
 }
