@@ -244,9 +244,6 @@ static inline void workers_finished(struct worker_context *ctx) {
 	pthread_mutex_unlock(&ctx->mutex);
 }
 
-#define ERR_PTR(err) ((void *)((long)(err)))
-#define PTR_ERR(p) ((long)(p))
-
 static void *worker_func(void *p) {
 	struct worker *worker = p;
 	struct worker_context *ctx = worker->ctx;
@@ -258,7 +255,7 @@ static void *worker_func(void *p) {
 
 	int err = measure_duration(ctx, worker);
 	if (err)
-		return ERR_PTR(err);
+		return NULL;
 
 	workers_finished(ctx);
 
