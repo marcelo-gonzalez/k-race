@@ -171,7 +171,7 @@ static int parse_sched_policy(json_object *sched_config,
 		}
 	}
 	fprintf(stderr, "sched policy config \"%s\" has bad type\n",
-	     json_object_get_string(policy_config));
+		json_object_get_string(policy_config));
 	return EINVAL;
 }
 
@@ -235,15 +235,15 @@ struct k_race_config *k_race_config_parse(int num_funcs, const char *filename) {
 	if (sched_config && json_object_get_type(sched_config) !=
 	    json_type_array) {
 		fprintf(stderr, "\"sched\" config element must refer"
-		     " to an array, got:\n%s\n",
-		     json_object_get_string(sched_config));
+			" to an array, got:\n%s\n",
+			json_object_get_string(sched_config));
 		goto out_free_sched;
 	} else if (sched_config)
 		sched_config_length = json_object_array_length(sched_config);
 
 	if (sched_config_length > num_funcs) {
 		fprintf(stderr, "\"sched\" config element has more"
-		     " elements than functions given. Truncating\n");
+			" elements than functions given. Truncating\n");
 	}
 
 	for (int i = 0; i < num_funcs; i++) {

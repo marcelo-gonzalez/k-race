@@ -102,25 +102,25 @@ static int set_sched_opts(pthread_attr_t *attr,
 	int err = pthread_attr_setschedpolicy(attr, config->sched_policy);
 	if (err) {
 		fprintf(stderr, "pthread_attr_setschedpolicy(): %s\n",
-		     strerror(err));
+			strerror(err));
 		return err;
 	}
 	err = pthread_attr_setinheritsched(attr, PTHREAD_EXPLICIT_SCHED);
 	if (err) {
 		fprintf(stderr, "pthread_attr_setinheritsched(): %s\n",
-		     strerror(err));
+			strerror(err));
 		return err;
 	}
 	err = pthread_attr_setschedparam(attr, &config->sched_param);
 	if (err) {
 		fprintf(stderr, "pthread_attr_setschedparam(): %s\n",
-		     strerror(err));
+			strerror(err));
 		return err;
 	}
 	err = pthread_attr_setaffinity_np(attr, sizeof(cpu_set_t), &config->cpus);
 	if (err) {
 		fprintf(stderr, "pthread_attr_setschedparam(): %s\n",
-		     strerror(err));
+			strerror(err));
 		return err;
 	}
 	return 0;
@@ -197,7 +197,7 @@ static int measure_duration(struct worker_context *ctx,
 		pre_round(ctx);
 		clock_gettime(CLOCK_MONOTONIC, &start);
 		int err = worker->target.func(ctx->user_context,
-					  worker->target.arg);
+					      worker->target.arg);
 		clock_gettime(CLOCK_MONOTONIC, &end);
 		if (__builtin_expect(err, 0)) {
 			ctx->error = -1;
@@ -267,7 +267,7 @@ static void *worker_func(void *p) {
 			pre_round(ctx);
 			nanosleep(&worker->sleep_time, NULL);
 			int err = worker->target.func(ctx->user_context,
-						       worker->target.arg);
+						      worker->target.arg);
 			if (__builtin_expect(err, 0)) {
 				ctx->error = -1;
 				fprintf(stderr, "User funcion returned error: %d\n", err);
