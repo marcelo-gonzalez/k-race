@@ -432,26 +432,31 @@ static int adjust_samples(unsigned int *samples, unsigned int *overrun,
 
 static int experiment_loop(struct worker_context *ctx,
 			   struct k_race_config *config,
-			   struct sampler *sampler) {
+			   float explore_probability) {
 	struct tracer *tr = alloc_tracer(config);
 	if (!tr)
 		return ENOMEM;
 	int err = ftrace_init(tr);
-	if (err) {
-		free_tracer(tr);
-		return err;
-	}
-	err = add_pids(tr, ctx);
 	if (err)
-		goto out;
+		goto out_free_tracer;
 
 	unsigned int overrun;
 	err = ftrace_overrun(&overrun);
 	if (err)
-		goto out;
+		goto out_ftrace_exit;
+
+	err = start_workers(ctx, config);
+	if (err)
+		goto out_ftrace_exit;
+	err = add_pids(tr, ctx);
+	if (err)
+		goto out_stop_workers;
+
+	struct sampler *sampler = alloc_learning_sampler(ctx->num_workers, ctx->durations, explore_probability);
+	if (!sampler)
+		goto out_stop_workers;
 
 	ctx->samples = 100;
-
 	print_data_header(sampler->num_params, config->name);
 
 	while (1) {
@@ -463,13 +468,13 @@ static int experiment_loop(struct worker_context *ctx,
 		while (samples < 100) {
 			err = enable_tracing();
 			if (err)
-				goto out;
+				goto out_destroy_sampler;
 			err = run_workers(ctx);
 			if (err)
-				goto out;
+				goto out_destroy_sampler;
 			err = disable_tracing();
 			if (err)
-				goto out;
+				goto out_destroy_sampler;
 			int entries, _counts, _triggers;
 			int missed_events = tracer_collect_stats(tr, &entries, &_counts, &_triggers);
 			if (!missed_events) {
@@ -479,7 +484,7 @@ static int experiment_loop(struct worker_context *ctx,
 			} else if (ctx->samples > 2) {
 				err = adjust_samples(&ctx->samples, &overrun, entries);
 				if (err)
-					goto out;
+					goto out_destroy_sampler;
 				if (ctx->samples < 2) {
 					fprintf(stderr, "ftrace buffers filling quickly. using 2 samples per run. might be losing data\n");
 					ctx->samples = 2;
@@ -490,22 +495,39 @@ static int experiment_loop(struct worker_context *ctx,
 		print_data(sampler->num_params, params, counts, triggers);
 	}
 
-out:
+out_destroy_sampler:
+	sampler->destroy(sampler);
+out_stop_workers:
+	stop_workers(ctx);
+out_ftrace_exit:
 	ftrace_exit();
+out_free_tracer:
 	free_tracer(tr);
 	return err;
 }
 
-static int notrace_loop(struct worker_context *ctx, struct sampler *sampler) {
-	ctx->samples = 1000;
+static int notrace_loop(struct worker_context *ctx, struct k_race_config *config) {
+	int err = start_workers(ctx, config);
+	if (err)
+		return err;
 
+	struct sampler *sampler = alloc_random_sampler(ctx->num_workers, ctx->durations);
+	if (!sampler) {
+		stop_workers(ctx);
+		return ENOMEM;
+	}
+
+	ctx->samples = 1000;
 	while (1) {
 		set_offsets(ctx, sampler->next_params(sampler));
-		int err = run_workers(ctx);
+		err = run_workers(ctx);
 		if (err)
-			return err;
+			break;
 	}
-	return 0;
+
+	sampler->destroy(sampler);
+	stop_workers(ctx);
+	return err;
 }
 
 int k_race_loop(struct k_race_options *opts,
@@ -530,27 +552,11 @@ int k_race_loop(struct k_race_options *opts,
 			   targets, opts, callbacks, &ctx))
 		goto out_config_free;
 
-	err = start_workers(&ctx, config);
-	if (err)
-		goto out_join_workers;
-
-	struct sampler *sampler;
 	if (!opts->notrace)
-		sampler = alloc_learning_sampler(num_targets, ctx.durations, opts->explore_probability);
+		err = experiment_loop(&ctx, config, opts->explore_probability);
 	else
-		sampler = alloc_random_sampler(num_targets, ctx.durations);
-	if (!sampler)
-		goto out_stop_workers;
+		err = notrace_loop(&ctx, config);
 
-	if (!opts->notrace)
-		err = experiment_loop(&ctx, config, sampler);
-	else
-		err = notrace_loop(&ctx, sampler);
-
-	sampler->destroy(sampler);
-out_stop_workers:
-	stop_workers(&ctx);
-out_join_workers:
 	err2 = join_workers(&ctx);
 	if (!err)
 		err = err2;
