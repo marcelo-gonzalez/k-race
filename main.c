@@ -398,15 +398,17 @@ static void print_data_header(int num_params, const char *name) {
 		printf("offset %d, ", i);
 	}
 	printf("%s count, ", name);
-	printf("%s triggers, ", name);
-	putchar('\n');
+	printf("%s triggers\n", name);
 }
 
 static void print_data(int n, long *params, int counts, int triggers) {
 	for (int i = 0; i < n; i++)
 		printf("%ld, ", params[i]);
-	printf("%d, %f, ", counts, (float)triggers/(float)counts);
-	putchar('\n');
+
+	float pct = 0;
+	if (counts)
+		pct = (float)triggers/(float)counts;
+	printf("%d, %f\n", counts, pct);
 }
 
 static int add_pids(struct tracer *tr, struct worker_context *ctx) {
