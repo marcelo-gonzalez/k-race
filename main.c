@@ -119,7 +119,7 @@ static int set_sched_opts(pthread_attr_t *attr,
 	}
 	err = pthread_attr_setaffinity_np(attr, sizeof(cpu_set_t), &config->cpus);
 	if (err) {
-		fprintf(stderr, "pthread_attr_setschedparam(): %s\n",
+		fprintf(stderr, "pthread_attr_setaffinity_np(): %s\n",
 			strerror(err));
 		return err;
 	}
