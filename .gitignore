@@ -1,4 +1,3 @@
 *.o
-discover
+libk-race.so
 test
-stats-test
