@@ -290,7 +290,6 @@ static int join_workers(struct worker_context *ctx) {
 		if (err) {
 			fprintf(stderr, "pthread_join: %s\n", strerror(err));
 			ret = err;
-			continue;
 		}
 	}
 	return ret;
