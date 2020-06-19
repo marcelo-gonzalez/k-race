@@ -24,7 +24,6 @@ struct learning_sampler {
 	struct bucket *buckets;
 	GTree *ordered_buckets;
 	struct bucket *current_bucket;
-	long *durations;
 	float explore_probability;
 	int found_something;
 };
@@ -153,7 +152,6 @@ static void free_learning_sampler(struct sampler *s) {
 	}
 	free(ls->buckets);
 	g_tree_unref(ls->ordered_buckets);
-	free(ls->durations);
 	free(ls->params);
 	free(ls);
 	free(s);
@@ -424,7 +422,6 @@ out_free_ls:
 }
 
 struct random_sampler {
-	long *durations;
 	long *left_edges;
 	long *right_edges;
 	long *params;
