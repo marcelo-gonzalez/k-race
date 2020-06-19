@@ -319,6 +319,7 @@ static int start_workers(struct worker_context *ctx,
 		int err = set_sched_opts(&attr, cfg);
 		if (err) {
 			stop_workers(ctx);
+			pthread_attr_destroy(&attr);
 			return err;
 		}
 		err = pthread_create(&worker->thread, &attr,
