@@ -86,6 +86,7 @@ The output looks like this:
 
 ```console
 hero@foo.bar:~/kernel-race$ sudo ./examples/ext4-race/test --config-file examples/ext4-race/config.json
+offset 0, race count, race triggers,
 3246733, 200, 0.000000, 
 3290711, 200, 0.000000, 
 3860175, 200, 0.000000, 
