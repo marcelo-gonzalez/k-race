@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #include "vchiq-ioctl.h"
-#include "k-race.h"
+#include <k-race/k-race.h>
 
 #define BUF_SIZE 200 * (1 << 10)
 

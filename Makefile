@@ -10,10 +10,22 @@ LDLIBS += -lgsl -lgslcblas -lm
 
 obj = config.o main.o trace.o stats.o
 
-.PHONY: clean examples
+.PHONY: clean examples install
 
 libk-race.so: $(obj)
 	$(CC) -shared -o libk-race.so $(obj) $(LDLIBS)
+
+prefix ?= /usr/local
+
+install:
+	if [ ! -d $(prefix)/include/k-race ]; then \
+		install -m 0755 -d $(prefix)/include/k-race; \
+	fi; \
+	if [ ! -d $(prefix)/lib ]; then \
+		install -m 0755 -d $(prefix)/lib; \
+	fi; \
+	install -m 0755 libk-race.so $(prefix)/lib; \
+	install -m 0644 k-race.h $(prefix)/include/k-race;
 
 .SECONDEXPANSION:
 $(EXAMPLES): libk-race.so $$(dir $$@)target.c

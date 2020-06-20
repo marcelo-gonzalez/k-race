@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "k-race.h"
+#include <k-race/k-race.h>
 
 // here a filesystem with no journal is mounted at /mnt
 
