@@ -17,7 +17,7 @@ libk-race.so: $(obj)
 
 prefix ?= /usr/local
 
-install:
+install: libk-race.so
 	if [ ! -d $(prefix)/include/k-race ]; then \
 		install -m 0755 -d $(prefix)/include/k-race; \
 	fi; \
