@@ -28,7 +28,7 @@ install:
 	install -m 0644 k-race.h $(prefix)/include/k-race;
 
 .SECONDEXPANSION:
-$(EXAMPLES): libk-race.so $$(dir $$@)target.c
+$(EXAMPLES): $$(dir $$@)target.c
 	$(CC) -I $(dir) -L $(dir) -Wall $(EXTRA_CFLAGS) -o $@ $(dir $@)target.c -lk-race
 
 examples: $(EXAMPLES)
