@@ -35,7 +35,7 @@ examples: $(EXAMPLES)
 
 config.o: config.h
 trace.o: config.h trace.h
-main.o: config.h k-race.h trace.h
+main.o: config.h k-race.h stats.h trace.h
 stats.o: stats.h
 
 clean:
