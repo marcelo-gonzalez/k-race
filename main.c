@@ -528,7 +528,6 @@ static int notrace_loop(struct worker_context *ctx, struct k_race_config *config
 	}
 
 	sampler->destroy(sampler);
-	stop_workers(ctx);
 	return err;
 }
 
