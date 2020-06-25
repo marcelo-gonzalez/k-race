@@ -25,6 +25,7 @@ enum opts {
 
 static struct option long_opts[] = {
 	{"config-file", required_argument, 0, opt_config_file},
+	{"out-file", required_argument, 0, 'o'},
 	{"explore-probability", required_argument, 0, 'e'},
 	{"no-trace", no_argument, 0, 'n'},
 	{0, 0, 0, 0},
@@ -37,9 +38,10 @@ int k_race_parse_options(struct k_race_options *opts,
 
 	opts->notrace = 0;
 	opts->config_file = "config.json";
+	opts->out_file = NULL;
 	opts->explore_probability = 0.1;
 
-	while ((opt = getopt_long(argc, argv, "e:n", long_opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "e:no:", long_opts, NULL)) != -1) {
 		char *end;
 		switch (opt) {
 		case '?':
@@ -56,6 +58,9 @@ int k_race_parse_options(struct k_race_options *opts,
 		case 'n':
 			opts->notrace = 1;
 			break;
+		case 'o':
+			opts->out_file = optarg;
+			break;
 		case opt_config_file:
 			opts->config_file = optarg;
 			break;
@@ -66,6 +71,12 @@ int k_race_parse_options(struct k_race_options *opts,
 		fprintf(stderr, "--explore_probability does nothing with --no-trace\n");
 		return -1;
 	}
+	if (opts->out_file && opts->notrace) {
+		fprintf(stderr, "--out-file and --no-trace both given, but there is no output with --no-trace\n");
+		return -1;
+	}
+	if (!opts->out_file)
+		opts->out_file = "out.csv";
 	return 0;
 }
 
@@ -393,22 +404,22 @@ static void free_workers(struct worker_context *ctx) {
 	pthread_mutex_destroy(&ctx->mutex);
 }
 
-static void print_data_header(int num_params, const char *name) {
+static void print_data_header(FILE *out, int num_params, const char *name) {
 	for (int i = 0; i < num_params; i++) {
-		printf("offset %d, ", i);
+		fprintf(out, "offset %d, ", i);
 	}
-	printf("%s count, ", name);
-	printf("%s triggers\n", name);
+	fprintf(out, "%s count, ", name);
+	fprintf(out, "%s triggers\n", name);
 }
 
-static void print_data(int n, long *params, int counts, int triggers) {
+static void print_data(FILE *out, int n, long *params, int counts, int triggers) {
 	for (int i = 0; i < n; i++)
-		printf("%ld, ", params[i]);
+		fprintf(out, "%ld, ", params[i]);
 
 	float pct = 0;
 	if (counts)
 		pct = (float)triggers/(float)counts;
-	printf("%d, %f\n", counts, pct);
+	fprintf(out, "%d, %f\n", counts, pct);
 }
 
 static int add_pids(struct tracer *tr, struct worker_context *ctx) {
@@ -434,7 +445,7 @@ static int adjust_samples(unsigned int *samples, unsigned int *overrun,
 
 static int experiment_loop(struct worker_context *ctx,
 			   struct k_race_config *config,
-			   float explore_probability) {
+			   float explore_probability, FILE *out) {
 	struct tracer *tr = alloc_tracer(config);
 	if (!tr)
 		return ENOMEM;
@@ -459,7 +470,7 @@ static int experiment_loop(struct worker_context *ctx,
 		goto out_stop_workers;
 
 	ctx->samples = 100;
-	print_data_header(sampler->num_params, config->name);
+	print_data_header(out, sampler->num_params, config->name);
 
 	while (1) {
 		unsigned int samples = 0;
@@ -494,7 +505,7 @@ static int experiment_loop(struct worker_context *ctx,
 			}
 		}
 		sampler->report(sampler, counts, triggers);
-		print_data(sampler->num_params, params, counts, triggers);
+		print_data(out, sampler->num_params, params, counts, triggers);
 	}
 
 out_destroy_sampler:
@@ -537,24 +548,36 @@ int k_race_loop(struct k_race_options *opts,
 	int err = 0;
 	int err2;
 	struct worker_context ctx;
+	FILE *out = NULL;
 
 	if (num_targets < 2) {
 		fprintf(stderr, "Must supply at least two targets\n");
 		return EINVAL;
 	}
 
+	if (!opts->notrace) {
+		out = fopen(opts->out_file, "w");
+		if (!out) {
+			int err = errno;
+			fprintf(stderr, "opening %s: %m\n", opts->out_file);
+			return err;
+		}
+	}
+
 	// TODO return err
 	struct k_race_config *config = k_race_config_parse(num_targets,
 							   opts->config_file);
-	if (!config)
-		return ENOMEM;
+	if (!config) {
+		err = ENOMEM;
+		goto out_close;
+	}
 
 	if (create_workers(user, num_targets,
 			   targets, opts, callbacks, &ctx))
 		goto out_config_free;
 
 	if (!opts->notrace)
-		err = experiment_loop(&ctx, config, opts->explore_probability);
+		err = experiment_loop(&ctx, config, opts->explore_probability, out);
 	else
 		err = notrace_loop(&ctx, config);
 
@@ -564,5 +587,8 @@ int k_race_loop(struct k_race_options *opts,
 	free_workers(&ctx);
 out_config_free:
 	k_race_config_free(config);
+out_close:
+	if (out)
+		fclose(out);
 	return err;
 }

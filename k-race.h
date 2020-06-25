@@ -21,6 +21,7 @@ struct k_race_options {
 	// to try.
 	int notrace;
 	const char *config_file;
+	const char *out_file;
 	// must be between 0 and 1, and controls the percentage of the
 	// time we try parameters that have been good so far vs random
 	// parameters.  see "Epsilon-greedy" here
