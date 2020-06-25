@@ -234,7 +234,7 @@ static void fdfpolynomial(double x, void *params, double *f, double *df) {
 }
 
 static long nth_root(int n, long x) {
-	if (n == 1)
+	if (n == 1 || x == 1)
 		return x;
 
 	gsl_root_fdfsolver *s = gsl_root_fdfsolver_alloc(gsl_root_fdfsolver_newton);
