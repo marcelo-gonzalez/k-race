@@ -445,7 +445,7 @@ static int adjust_samples(unsigned int *samples, unsigned int *overrun,
 
 static int experiment_loop(struct worker_context *ctx,
 			   struct k_race_config *config,
-			   float explore_probability, FILE *out) {
+			   float explore_probability, const char *out_file) {
 	struct tracer *tr = alloc_tracer(config);
 	if (!tr)
 		return ENOMEM;
@@ -469,9 +469,14 @@ static int experiment_loop(struct worker_context *ctx,
 	if (!sampler)
 		goto out_stop_workers;
 
-	ctx->samples = 100;
+	FILE *out = fopen(out_file, "w");
+	if (!out) {
+		fprintf(stderr, "opening %s: %m\n", out_file);
+		goto out_destroy_sampler;
+	}
 	print_data_header(out, sampler->num_params, config->name);
 
+	ctx->samples = 100;
 	while (1) {
 		unsigned int samples = 0;
 		int counts = 0, triggers = 0;
@@ -481,13 +486,13 @@ static int experiment_loop(struct worker_context *ctx,
 		while (samples < 100) {
 			err = enable_tracing();
 			if (err)
-				goto out_destroy_sampler;
+				goto out_close_file;
 			err = run_workers(ctx);
 			if (err)
-				goto out_destroy_sampler;
+				goto out_close_file;
 			err = disable_tracing();
 			if (err)
-				goto out_destroy_sampler;
+				goto out_close_file;
 			int entries, _counts, _triggers;
 			int missed_events = tracer_collect_stats(tr, &entries, &_counts, &_triggers);
 			if (!missed_events) {
@@ -497,7 +502,7 @@ static int experiment_loop(struct worker_context *ctx,
 			} else if (ctx->samples > 2) {
 				err = adjust_samples(&ctx->samples, &overrun, entries);
 				if (err)
-					goto out_destroy_sampler;
+					goto out_close_file;
 				if (ctx->samples < 2) {
 					fprintf(stderr, "ftrace buffers filling quickly. using 2 samples per run. might be losing data\n");
 					ctx->samples = 2;
@@ -508,6 +513,8 @@ static int experiment_loop(struct worker_context *ctx,
 		print_data(out, sampler->num_params, params, counts, triggers);
 	}
 
+out_close_file:
+	fclose(out);
 out_destroy_sampler:
 	sampler->destroy(sampler);
 out_stop_workers:
@@ -548,36 +555,24 @@ int k_race_loop(struct k_race_options *opts,
 	int err = 0;
 	int err2;
 	struct worker_context ctx;
-	FILE *out = NULL;
 
 	if (num_targets < 2) {
 		fprintf(stderr, "Must supply at least two targets\n");
 		return EINVAL;
 	}
 
-	if (!opts->notrace) {
-		out = fopen(opts->out_file, "w");
-		if (!out) {
-			int err = errno;
-			fprintf(stderr, "opening %s: %m\n", opts->out_file);
-			return err;
-		}
-	}
-
 	// TODO return err
 	struct k_race_config *config = k_race_config_parse(num_targets,
 							   opts->config_file);
-	if (!config) {
-		err = ENOMEM;
-		goto out_close;
-	}
+	if (!config)
+		return ENOMEM;
 
 	if (create_workers(user, num_targets,
 			   targets, opts, callbacks, &ctx))
 		goto out_config_free;
 
 	if (!opts->notrace)
-		err = experiment_loop(&ctx, config, opts->explore_probability, out);
+		err = experiment_loop(&ctx, config, opts->explore_probability, opts->out_file);
 	else
 		err = notrace_loop(&ctx, config);
 
@@ -585,10 +580,8 @@ int k_race_loop(struct k_race_options *opts,
 	if (!err)
 		err = err2;
 	free_workers(&ctx);
+
 out_config_free:
 	k_race_config_free(config);
-out_close:
-	if (out)
-		fclose(out);
 	return err;
 }
