@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -76,7 +77,7 @@ int k_race_parse_options(struct k_race_options *opts,
 		return -1;
 	}
 	if (!opts->out_file)
-		opts->out_file = "out.csv";
+		opts->out_file = "out.dat";
 	return 0;
 }
 
@@ -404,22 +405,32 @@ static void free_workers(struct worker_context *ctx) {
 	pthread_mutex_destroy(&ctx->mutex);
 }
 
-static void print_data_header(FILE *out, int num_params, const char *name) {
-	for (int i = 0; i < num_params; i++) {
-		fprintf(out, "offset %d, ", i);
-	}
-	fprintf(out, "%s count, ", name);
-	fprintf(out, "%s triggers\n", name);
+static int print_data_header(FILE *out, uint32_t num_params, const char *name) {
+	char *magic = "k_race_data";
+	uint32_t np = htole32(num_params);
+
+	if (fputs(magic, out) == EOF)
+		return -1;
+
+	if (fwrite(&np, sizeof(np), 1, out) != 1)
+		return -1;
+	return 0;
 }
 
-static void print_data(FILE *out, int n, long *params, int counts, int triggers) {
-	for (int i = 0; i < n; i++)
-		fprintf(out, "%ld, ", params[i]);
+static int print_data(FILE *out, int n, uint64_t *params, uint32_t counts, uint32_t triggers) {
+	for (int i = 0; i < n; i++) {
+		uint64_t p = htole64(params[i]);
+		if (fwrite(&p, sizeof(p), 1, out) != 1)
+			return -1;
+	}
 
-	float pct = 0;
-	if (counts)
-		pct = (float)triggers/(float)counts;
-	fprintf(out, "%d, %f\n", counts, pct);
+	counts = htole32(counts);
+	triggers = htole32(triggers);
+	if (fwrite(&counts, sizeof(counts), 1, out) != 1)
+		return -1;
+	if (fwrite(&triggers, sizeof(triggers), 1, out) != 1)
+		return -1;
+	return 0;
 }
 
 static int add_pids(struct tracer *tr, struct worker_context *ctx) {
@@ -474,7 +485,11 @@ static int experiment_loop(struct worker_context *ctx,
 		fprintf(stderr, "opening %s: %m\n", out_file);
 		goto out_destroy_sampler;
 	}
-	print_data_header(out, sampler->num_params, config->name);
+	err = print_data_header(out, sampler->num_params, config->name);
+	if (err) {
+		fprintf(stderr, "writing to %s: %m\n", out_file);
+		goto out_close_file;
+	}
 
 	ctx->samples = 100;
 	while (1) {
@@ -510,7 +525,19 @@ static int experiment_loop(struct worker_context *ctx,
 			}
 		}
 		sampler->report(sampler, counts, triggers);
-		print_data(out, sampler->num_params, params, counts, triggers);
+
+		/* Keep running if there's an error writing, since I guess you
+		could still trigger the race and get a splat or whatever
+		and that's what you really care about
+		*/
+		static int write_error;
+		if (!write_error) {
+			err = print_data(out, sampler->num_params, (uint64_t *)params, counts, triggers);
+			if (err) {
+				fprintf(stderr, "writing to %s: %m\n", out_file);
+				write_error = 1;
+			}
+		}
 	}
 
 out_close_file:
