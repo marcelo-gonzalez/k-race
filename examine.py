@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+
+import argparse
 import struct
-import sys
 import pandas as pd
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
@@ -22,7 +24,7 @@ def add_plot(fig, data):
         ax.set_xlim(min(data['offset_0'])-extra, max(data['offset_0'])+extra)
     ax.set_title('triggers')
 
-def read_k_race_file(filename):
+def read_k_race_file(filename, lines=0):
     with open(filename, 'rb') as f:
         magic = f.read(len('k_race_data'))
         if magic != b'k_race_data':
@@ -39,7 +41,11 @@ def read_k_race_file(filename):
         # unsigned 32 bits for counts and triggers
         data_fmt += 'II'
         data = []
+
         while True:
+            if lines > 0 and len(data) >= lines:
+                break
+
             x = f.read(num_params*8+4+4)
             if len(x) < num_params*8+4+4:
                 break
@@ -56,15 +62,30 @@ def read_k_race_file(filename):
         return ret
 
 def main():
-    if len(sys.argv) < 2:
-        print('pass me a file name')
-        return
+    parser = argparse.ArgumentParser(description='display k-race output')
+    subparsers = parser.add_subparsers(dest='cmd')
 
-    data = read_k_race_file(sys.argv[1])
+    plot_parser = subparsers.add_parser('plot', help='display a plot of the data (only available for data output by 3 or fewer k-race threads)')
+    cat_parser = subparsers.add_parser('cat', help='dump human-readable data to stdout')
+    # TODO: add tail
+    head_parser = subparsers.add_parser('head', help='display the first N lines of the output')
+    head_parser.add_argument('-n', dest='n', type=int, default=10, help='the number of lines to print')
 
-    fig = plt.figure()
-    add_plot(fig, data)
-    plt.show()
+    parser.add_argument('file', help='k-race output file')
+    args = parser.parse_args()
+
+    if args.cmd == 'head':
+        data = read_k_race_file(args.file, args.n)
+    else:
+        data = read_k_race_file(args.file)
+
+    if args.cmd == 'head' or args.cmd == 'cat':
+        with pd.option_context('display.max_rows', None):
+            print(data)
+    else:
+        fig = plt.figure()
+        add_plot(fig, data)
+        plt.show()
 
 if __name__ == '__main__':
     main()

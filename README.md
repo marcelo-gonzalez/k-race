@@ -82,22 +82,38 @@ nanosleep(&some_amount);
 f(user_pointer, user_arg);
 ```
 
-The output looks like this:
+The data is output to a file named `out.dat` by default, and `examine.py`
+can be used to examine the output.
 
 ```console
 hero@foo.bar:~/kernel-race$ sudo ./examples/ext4-race/test --config-file examples/ext4-race/config.json
 ^C
-hero@foo.bar:~/kernel-race$ head out.csv
-offset 0, race count, race triggers,
-3246733, 200, 0.000000,
-3290711, 200, 0.000000,
-3860175, 200, 0.000000,
-812271, 200, 0.000000,
-153182, 182, 0.362637,
-153251, 122, 0.540984,
-153171, 109, 0.642202,
-153214, 142, 0.464789,
-153241, 141, 0.468085,
+hero@foo.bar:~/kernel-race$ ./examine.py cat out.dat
+    offset_0  counts  triggers
+0    1342273     200  0.000000
+1    1411458     200  0.000000
+2    3306398     200  0.000000
+3    1677705     200  0.000000
+4    3099204     200  0.000000
+5    2057901     200  0.000000
+6    3459935     200  0.000000
+7    3488149     200  0.000000
+8    2029730     200  0.000000
+..... (many lines of zeroes before something is found) .....
+49   2162093     200  0.000000
+50    313130     199  0.346734
+51    313193     200  0.500000
+52    313200     200  0.500000
+53    313174     200  0.265000
+54   1863066     200  0.000000
+55    313201     200  0.020000
+56    313196     200  0.030000
+57    313185     200  0.045000
+58    313119     200  0.020000
+59    313121     200  0.020000
+60    313166     200  0.040000
+61    313165     200  0.100000
+62    313157     200  0.060000
 ```
 
 The offset indicates the difference in start times between the two
@@ -106,8 +122,7 @@ times `"opened_by"` followed by `"closed_by"` was found, and the
 `triggers` field indicates the number of times `"triggered_by"`
 occurred between the two, divided by `count` ("occurred between" is
 kind of dubious since we're looking at timestamps from different CPUs, but close
-enough for our purposes). Use `python3 plot.py
-out.csv` to view a plot.
+enough for our purposes). Use `./examine.py plot out.dat` to view a plot.
 
 In this example, the race is triggered much more quickly than with
 simple loops, and we get to see how often we got close to triggering
@@ -126,7 +141,7 @@ exists in the kernel tree in `./tools/lib/traceevent`
 
 `plot.py` dependencies:
 ```console
-hero@foo.bar:~$ pip3 install matplotlib numpy
+hero@foo.bar:~$ pip3 install matplotlib pandas
 ```
 
 ## Known Problems
