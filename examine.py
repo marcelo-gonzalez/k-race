@@ -69,6 +69,7 @@ def k_race_file_foreach_record(file, f, data_fmt, num_params, lines):
         lines = -lines
         start = file.seek(0, os.SEEK_CUR)
         end = file.seek(0, os.SEEK_END)
+        end -= (end - start) % single_datapoint_len(num_params)
 
         p = end - lines * single_datapoint_len(num_params)
         if p < start:
