@@ -27,8 +27,10 @@ static int read_file(FILE *file, char **out) {
 	int pos = 0;
 	int size = page_size;
 	char *buf = malloc(size);
-	if (!buf)
+	if (!buf) {
+		fprintf(stderr, "%s: OOM\n", __func__);
 		return -ENOMEM;
+	}
 	while ((n = fread(buf+pos, 1, page_size, file)) > 0) {
 		pos += n;
 		if (pos >= size) {
@@ -410,7 +412,6 @@ static int add_comms(struct tracer *tr, int num_comms, const char **comms) {
 static int *trace_fds;
 static int num_cpus;
 
-
 static void clear_buffers(void) {
 	char *buf = malloc(page_size);
 	if (!buf) {
@@ -529,15 +530,19 @@ static int alloc_percpu(struct tracer *tr) {
 	int err = 0;
 
 	tr->pages = malloc(page_size * num_cpus);
-	if (!tr->pages)
+	if (!tr->pages) {
+		fprintf(stderr, "%s: OOM\n", __func__);
 		return ENOMEM;
+	}
 	tr->finished = malloc(sizeof(int) * num_cpus);
 	if (!tr->finished) {
+		fprintf(stderr, "%s: OOM\n", __func__);
 		err = ENOMEM;
 		goto free_pages;
 	}
 	tr->kbufs = malloc(sizeof(*tr->kbufs) * num_cpus);
 	if (!tr->kbufs) {
+		fprintf(stderr, "%s: OOM\n", __func__);
 		err = ENOMEM;
 		goto free_finished;
 	}
@@ -613,8 +618,10 @@ struct tracer *alloc_tracer(struct k_race_config *config) {
 	page_size = getpagesize();
 
 	struct tracer *ret = malloc(sizeof(*ret));
-	if (!ret)
+	if (!ret) {
+		fprintf(stderr, "%s: OOM\n", __func__);
 		return NULL;
+	}
 	memset(ret, 0, sizeof(*ret));
 
 	ret->event_parser = tep_alloc();
@@ -642,8 +649,10 @@ struct tracer *alloc_tracer(struct k_race_config *config) {
 		goto free_tep;
 
 	ret->current_events = malloc(sizeof(struct race_event) * num_cpus);
-	if (!ret->current_events)
+	if (!ret->current_events) {
+		fprintf(stderr, "%s: OOM\n", __func__);
 		goto free_pcpu;
+	}
 	memset(ret->current_events, 0, sizeof(struct race_event) * num_cpus);
 
 	err = copy_race_points(ret, config);
@@ -689,6 +698,7 @@ int ftrace_init(struct tracer *tr) {
 	tracing_on = fopen(path, "w");
 	if (!tracing_on) {
 		err = errno;
+		fprintf(stderr, "error opening %s: m\n", path);
 		tracefs_put_tracing_file(path);
 		return err;
 	}
@@ -698,6 +708,7 @@ int ftrace_init(struct tracer *tr) {
 	struct sigaction sa = { .sa_handler = sigint_handler };
 	if (sigaction(SIGINT, &sa, &sigint_old) == -1) {
 		err = errno;
+		perror("sigaction");
 		goto close_tracing_on;
 	}
 
@@ -712,6 +723,7 @@ int ftrace_init(struct tracer *tr) {
 	trace_fds = malloc(sizeof(int) * num_cpus);
 	if (!trace_fds) {
 		err = ENOMEM;
+		fprintf(stderr, "%s: OOM\n", __func__);
 		goto reset_ftrace;
 	}
 	err = open_trace_fds(&tr->cpus);
