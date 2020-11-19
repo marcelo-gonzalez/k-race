@@ -505,11 +505,12 @@ static int open_trace_fds(cpu_set_t *cpus) {
 		}
 
 		int fd = open(filename, O_RDONLY | O_NONBLOCK);
-		free(filename);
 		if (fd < 0) {
 			fprintf(stderr, "error opening %s: %m\n", filename);
+			free(filename);
 			continue;
 		}
+		free(filename);
                 /* is this correct? here there is an assumption that the values of
                  * online cpus you get from the cpu_set_t returned by pthread_getaffinity_np
                  * are the same as the values in the kernel internal struct cpuset. need
