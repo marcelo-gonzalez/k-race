@@ -151,27 +151,24 @@ static int add_kprobe(FILE *kprobe_events, struct race_point *p,
 		goto out_err;
 	}
 	char *path = tracefs_get_tracing_file(filename);
+	free(filename);
 	if (!path) {
-		free(filename);
 		err = ENOMEM;
 		goto out_err;
 	}
-	free(filename);
 	FILE *f = fopen(path, "r");
+	tracefs_put_tracing_file(path);
 	if (!f) {
 		err = errno;
-		free(path);
 		goto out_err;
 	}
-	free(path);
 	char *buf;
 	int sz = read_file(f, &buf);
+	fclose(f);
 	if (sz < 0) {
-		fclose(f);
 		err = -sz;
 		goto out_err;
 	}
-	fclose(f);
 	err = tep_parse_event(tep, buf, sz, "kprobes");
 	free(buf);
 	if (err) {
@@ -183,19 +180,17 @@ static int add_kprobe(FILE *kprobe_events, struct race_point *p,
 	if (asprintf(&filename, "events/kprobes/%s/enable", p->kprobe_name) == -1)
 		return ENOMEM;
 	path = tracefs_get_tracing_file(filename);
+	free(filename);
 	if (!path) {
-		free(filename);
 		err = ENOMEM;
 		goto out_err;
 	}
-	free(filename);
 	f = fopen(path, "w");
+	tracefs_put_tracing_file(path);
 	if (!f) {
 		err = errno;
-		tracefs_put_tracing_file(path);
 		goto out_err;
 	}
-	tracefs_put_tracing_file(path);
 	if (fputc('1', f) == EOF) {
 		fclose(f);
 		err = EINVAL; // ?
@@ -208,6 +203,7 @@ static int add_kprobe(FILE *kprobe_events, struct race_point *p,
 	return 0;
 
 out_err:
+	fprintf(stderr, "error adding kprobe %s: %s\n", p->kprobe_name, strerror(err));
 	clear_kprobe(NULL, p->kprobe_name);
 	return err;
 }
