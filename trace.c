@@ -429,7 +429,7 @@ static void clear_buffers(void) {
 
 static struct sigaction sigint_old;
 
-void sigint_handler(int sig) {
+static void sigint_handler(int sig) {
 	// TODO: this handler can race in a bunch of places, should fix
 	disable_tracing();
 	clear_kprobes();
@@ -441,7 +441,7 @@ void sigint_handler(int sig) {
 				close(trace_fds[i]);
 	}
 	enable_tracing();
-	exit(0);
+	sigint_old.sa_handler(sig);
 }
 
 void free_percpu(struct tracer *tr) {
@@ -706,8 +706,13 @@ int ftrace_init(struct tracer *tr) {
 	tracefs_put_tracing_file(path);
 	disable_tracing();
 
+	if (sigaction(SIGINT, NULL, &sigint_old) == -1) {
+		err = errno;
+		perror("sigaction");
+		goto close_tracing_on;
+	}
 	struct sigaction sa = { .sa_handler = sigint_handler };
-	if (sigaction(SIGINT, &sa, &sigint_old) == -1) {
+	if (sigaction(SIGINT, &sa, NULL) == -1) {
 		err = errno;
 		perror("sigaction");
 		goto close_tracing_on;
