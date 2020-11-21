@@ -441,7 +441,10 @@ static void sigint_handler(int sig) {
 				close(trace_fds[i]);
 	}
 	enable_tracing();
-	sigint_old.sa_handler(sig);
+	if (sigint_old.sa_handler)
+		sigint_old.sa_handler(sig);
+	else
+		exit(0);
 }
 
 void free_percpu(struct tracer *tr) {
