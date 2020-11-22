@@ -2,6 +2,7 @@
 #define K_RACE_H
 
 struct k_race_target {
+	// return nonzero on error to abort.
 	int (*func)(void *user, void *arg);
 	void *arg;
 };
