@@ -2,7 +2,7 @@ dir = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 EXAMPLES = $(patsubst %, %test, $(dir $(wildcard examples/*/target.c)))
 
-CFLAGS = -Wall -fpic -I/usr/include/json-c $(EXTRA_CFLAGS)
+CFLAGS = -O2 -Wall -fpic -I/usr/include/json-c $(EXTRA_CFLAGS)
 # TODO: use CMake or something, because this is not correct on every computer
 CFLAGS += -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include  -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include
 LDLIBS = -ltracefs -ltraceevent -ldl -ljson-c -lglib-2.0
