@@ -22,7 +22,7 @@
 static FILE *tracing_on;
 static int page_size;
 
-static int read_file(FILE *file, char **out) {
+static int read_file(const char *path, char **out) {
 	int n;
 	int pos = 0;
 	int size = page_size;
@@ -31,19 +31,29 @@ static int read_file(FILE *file, char **out) {
 		fprintf(stderr, "%s: OOM\n", __func__);
 		return -ENOMEM;
 	}
+	FILE *file = fopen(path, "r");
+	if (!file) {
+		int err = errno ? errno : ENOENT;
+		fprintf(stderr, "can't open %s: %m\n", path);
+		free(buf);
+		return err;
+	}
 	while ((n = fread(buf+pos, 1, page_size, file)) > 0) {
 		pos += n;
 		if (pos >= size) {
 			size *= 2;
 			char *b = realloc(buf, size);
 			if (!b) {
+				fprintf(stderr, "%s: OOM\n", __func__);
 				free(buf);
+				fclose(file);
 				return -ENOMEM;
 			}
 			buf = b;
 		}
 	}
 	*out = buf;
+	fclose(file);
 	return pos;
 }
 
@@ -158,15 +168,10 @@ static int add_kprobe(FILE *kprobe_events, struct race_point *p,
 		err = ENOMEM;
 		goto out_err;
 	}
-	FILE *f = fopen(path, "r");
-	tracefs_put_tracing_file(path);
-	if (!f) {
-		err = errno;
-		goto out_err;
-	}
+
 	char *buf;
-	int sz = read_file(f, &buf);
-	fclose(f);
+	int sz = read_file(path, &buf);
+	tracefs_put_tracing_file(path);
 	if (sz < 0) {
 		err = -sz;
 		goto out_err;
@@ -187,7 +192,7 @@ static int add_kprobe(FILE *kprobe_events, struct race_point *p,
 		err = ENOMEM;
 		goto out_err;
 	}
-	f = fopen(path, "w");
+	FILE *f = fopen(path, "w");
 	tracefs_put_tracing_file(path);
 	if (!f) {
 		err = errno;
@@ -286,38 +291,24 @@ out_err:
 }
 
 static int initialize_parser(struct tracer *tr) {
-	FILE *file;
-	char *path;
 	char *buf;
-	int size;
-	int err = -1;
-
-	path = tracefs_get_tracing_file("events/header_page");
+	char *path = tracefs_get_tracing_file("events/header_page");
 	if (!path) {
 		fprintf(stderr, "can't get events/header_page path\n");
 		return -1;
 	}
-	file = fopen(path, "r");
-	if (!file) {
-		fprintf(stderr, "can't open %s: %m\n", path);
-		goto put_path;
-	}
-	size = read_file(file, &buf);
-	if (size < 0) {
-		fprintf(stderr, "reading from %s: %s\n", path, strerror(-size));
-		goto close_file;
-	}
-	err = tep_parse_header_page(tr->event_parser, buf, size, sizeof(long));
+	int size = read_file(path, &buf);
+	tracefs_put_tracing_file(path);
+	if (size < 0)
+		return -size;
+
+	int err = tep_parse_header_page(tr->event_parser, buf, size, sizeof(long));
 	if (err) {
 		char err_msg[200];
 		tep_strerror(tr->event_parser, err, err_msg, sizeof(err_msg));
 		fprintf(stderr, "error parsing info at %s: %s\n", path, err_msg);
 	}
 	free(buf);
-close_file:
-	fclose(file);
-put_path:
-	tracefs_put_tracing_file(path);
 	return err;
 }
 
