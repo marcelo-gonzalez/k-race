@@ -135,11 +135,9 @@ hero@foo.bar:~$ sudo apt-get install libgsl-dev libglib2.0-dev libjson-c-dev
 
 In addition to these, we need libtraceevent and libtracefs, which can
 be gotten from
-[here](https://git.kernel.org/pub/scm/utils/trace-cmd/trace-cmd.git) or
-[here](https://github.com/rostedt/trace-cmd). libtraceevent also
-exists in the kernel tree in `./tools/lib/traceevent`
+[here](https://git.kernel.org/pub/scm/libs/libtrace/).
 
-`plot.py` dependencies:
+`examine.py` dependencies:
 ```console
 hero@foo.bar:~$ pip3 install matplotlib pandas
 ```
