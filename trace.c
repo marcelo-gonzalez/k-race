@@ -20,12 +20,11 @@
 #include "trace.h"
 
 static FILE *tracing_on;
-static int page_size;
 
 static int read_file(const char *path, char **out) {
 	int n;
 	int pos = 0;
-	int size = page_size;
+	int size = getpagesize();
 	char *buf = malloc(size);
 	if (!buf) {
 		fprintf(stderr, "%s: OOM\n", __func__);
@@ -38,7 +37,7 @@ static int read_file(const char *path, char **out) {
 		free(buf);
 		return err;
 	}
-	while ((n = fread(buf+pos, 1, page_size, file)) > 0) {
+	while ((n = fread(buf+pos, 1, getpagesize(), file)) > 0) {
 		pos += n;
 		if (pos >= size) {
 			size *= 2;
@@ -404,7 +403,7 @@ static int *trace_fds;
 static int num_cpus;
 
 static void clear_buffers(void) {
-	char *buf = malloc(page_size);
+	char *buf = malloc(getpagesize());
 	if (!buf) {
 		fprintf(stderr, "%s: OOM\n", __func__);
 		return;
@@ -412,7 +411,7 @@ static void clear_buffers(void) {
 	for (int i = 0; i < num_cpus; i++) {
 		int n;
 		do {
-			n = read(trace_fds[i], buf, page_size);
+			n = read(trace_fds[i], buf, getpagesize());
 		} while (n > 0);
 	}
 	free(buf);
@@ -524,7 +523,7 @@ static int open_trace_fds(cpu_set_t *cpus) {
 static int alloc_percpu(struct tracer *tr) {
 	int err = 0;
 
-	tr->pages = malloc(page_size * num_cpus);
+	tr->pages = malloc(getpagesize() * num_cpus);
 	if (!tr->pages) {
 		fprintf(stderr, "%s: OOM\n", __func__);
 		return ENOMEM;
@@ -542,7 +541,7 @@ static int alloc_percpu(struct tracer *tr) {
 		goto free_finished;
 	}
 	memset(tr->finished, 0, sizeof(int) * num_cpus);
-	memset(tr->pages, 0, page_size * num_cpus);
+	memset(tr->pages, 0, getpagesize() * num_cpus);
 	memset(tr->kbufs, 0, sizeof(*tr->kbufs) * num_cpus);
 
 	enum kbuffer_endian end = tep_is_local_bigendian(tr->event_parser) ?
@@ -610,8 +609,6 @@ static int copy_race_points(struct tracer *tr,
 }
 
 struct tracer *alloc_tracer(struct k_race_config *config) {
-	page_size = getpagesize();
-
 	struct tracer *ret = malloc(sizeof(*ret));
 	if (!ret) {
 		fprintf(stderr, "%s: OOM\n", __func__);
@@ -764,7 +761,7 @@ int disable_tracing(void) {
 }
 
 static inline void *cpu_page(struct tracer *tr, int idx) {
-	return ((char *)tr->pages) + (idx * page_size);
+	return ((char *)tr->pages) + (idx * getpagesize());
 }
 
 static struct race_point *match_race_event(struct tracer *tr,
@@ -795,7 +792,7 @@ static struct race_point *match_race_event(struct tracer *tr,
 
 static void *read_event(struct tracer *tr, int cpu, int *missed_events) {
 	struct kbuffer *kbuf = tr->kbufs[cpu];
-	int n = read(trace_fds[cpu], cpu_page(tr, cpu), page_size);
+	int n = read(trace_fds[cpu], cpu_page(tr, cpu), getpagesize());
 	if (n <= 0)
 		return NULL;
 	kbuffer_load_subbuffer(kbuf, cpu_page(tr, cpu));
