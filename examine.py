@@ -94,8 +94,9 @@ def read_k_race_file(filename, file, data_fmt, num_params, columns):
 
 
 def print_k_race_file(filename, file, data_fmt, num_params, columns, lines):
-    fmt = '{:>10}'*(num_params+2)
-    print(fmt.format(*columns))
+    fmt = '{:>10}'*(num_params+1)
+    print((fmt+'{:>10}').format(*columns))
+    fmt += '{:>10.5}'
     def print_record(record):
         triggers = float(record[-1]) / float(record[-2])
         print(fmt.format(*record[:-1], triggers))
