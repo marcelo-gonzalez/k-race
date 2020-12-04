@@ -80,7 +80,7 @@ def k_race_file_foreach_record(file, f, data_fmt, num_params, lines):
     return index_start
 
 
-def read_k_race_file(filename, file, data_fmt, num_params, columns):
+def read_k_race_file(file, data_fmt, num_params, columns):
     data = []
     def fill_data(record):
         data.append(record)
@@ -93,7 +93,7 @@ def read_k_race_file(filename, file, data_fmt, num_params, columns):
     return ret
 
 
-def print_k_race_file(filename, file, data_fmt, num_params, columns, lines):
+def print_k_race_file(file, data_fmt, num_params, columns, lines):
     fmt = '{:>10}'*(num_params+1)
     print((fmt+'{:>10}').format(*columns))
     fmt += '{:>10.5}'
@@ -134,7 +134,7 @@ def main():
     columns += ['counts', 'triggers']
 
     if args.cmd == 'plot':
-        data = read_k_race_file(args.file, file, data_fmt, num_params, columns)
+        data = read_k_race_file(file, data_fmt, num_params, columns)
         fig = plt.figure()
         add_plot(fig, data)
         plt.show()
@@ -144,7 +144,7 @@ def main():
             n = -args.n
         elif args.cmd == 'head':
             n = args.n
-        print_k_race_file(args.file, file, data_fmt, num_params, columns, n)
+        print_k_race_file(file, data_fmt, num_params, columns, n)
 
     file.close()
 
