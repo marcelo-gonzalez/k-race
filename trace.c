@@ -32,8 +32,8 @@ static int read_file(const char *path, char **out) {
 	}
 	FILE *file = fopen(path, "r");
 	if (!file) {
-		int err = errno ? errno : ENOENT;
-		fprintf(stderr, "can't open %s: %m\n", path);
+		int err = errno ? -errno : -ENOENT;
+		fprintf(stderr, "can't open %s: %s\n", path, strerror(-err));
 		free(buf);
 		return err;
 	}
