@@ -579,7 +579,7 @@ static int notrace_loop(struct worker_context *ctx, struct k_race_config *config
 int k_race_loop(struct k_race_options *opts,
 		int num_targets, struct k_race_target *targets,
 		struct k_race_callbacks *callbacks, void *user) {
-	int err = 0;
+	int err = -1;
 	int err2;
 	struct worker_context ctx;
 
